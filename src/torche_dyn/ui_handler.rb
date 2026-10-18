@@ -1,83 +1,148 @@
+# -------------------------------------------------------------------------
+# UIHandler – handles user input, persistence, and material setup
+# -------------------------------------------------------------------------
+
 module TorcheDyn
+  
   class UIHandler
-    # Persistance des paramètres durant la session
-    @@last_params = {
-      mode: "Dressed",
-      curve: "Para",
-      radius: 1000.mm,
-      nb_quarters: 4,
-      offset: 50.mm,
-      thickness: 20.mm,
-      hmax: 500.mm,
-      coeff: 1.2,
-      pos_x: 0,
-      pos_y: 0,
-      mode_deroule: false,
-      nb_materials: 2,
-      show_normals: false
-    }
-
-    def self.show_dialog
-      # Construction des prompts pour UI.inputbox
-      prompts = [
-        "Mode (Dressed/OCL):", "Courbe (Para/Lin):", "Rayon:", 
-        "Nombre de Quarts:", "Offset:", "Épaisseur:", 
-        "Hmax:", "Coefficient:", "Position X:", "Position Y:", 
-        "Mode Déroulé (True/False):", "Nb Matériaux (1/2):", "Afficher Normales:"
-      ]
-
-      defaults = [
-        @@last_params[:mode], @@last_params[:curve], @@last_params[:radius],
-        @@last_params[:nb_quarters], @@last_params[:offset], @@last_params[:thickness],
-        @@last_params[:hmax], @@last_params[:coeff], @@last_params[:pos_x], @@last_params[:pos_y],
-        @@last_params[:mode_deroule], @@last_params[:nb_materials], @@last_params[:show_normals]
-      ]
-
-      # Affichage de la boîte de dialogue standard SketchUp
-      input = UI.inputbox(prompts, defaults, "Paramètres Torche Volume")
-
-      if input
-        # Mise à jour de la persistance
-        @@last_params = {
-          mode: input[0],
-          curve: input[1],
-          radius: input[2].to_f,
-          nb_quarters: input[3].to_i,
-          offset: input[4].to_f,
-          thickness: input[5].to_f,
-          hmax: input[6].to_f,
-          coeff: input[7].to_f,
-          pos_x: input[8].to_f,
-          pos_y: input[9].to_f,
-          mode_deroule: input[10].to_s.downcase == 'true',
-          nb_materials: input[11].to_i,
-          show_normals: input[12].to_s.downcase == 'true'
-        }
-        return @@last_params
+    # Class variable to remember the last entered values during the session
+    @@last_params = TorcheDyn::Config::DEFAULT_PARAMS 
+    
+    def self.run
+      LogManager.write_header
+      model = Sketchup.active_model
+      
+      # Version check
+      if Sketchup.version.to_f < Config::SKETCHUP_MIN_VERSION
+        LogManager.warn "Version incompatible : #{Sketchup.version}"
+        UI.messagebox("Version incompatible : SketchUp #{Config::SKETCHUP_MIN_VERSION} minimum requis.")
+        return
       end
 
-      nil
+      # Collect inputs from the user
+      params = collect_inputs
+      return unless params # Exit if user pressed 'Cancel'
+      
+      # Persist the validated values for the next run
+      @@last_params = params
+
+      # Setup materials (returns either a single material or an array [mat1, mat2])
+      materials = setup_material
+      
+      # Formatting material names for the log
+      mat_names = materials.is_a?(Array) ? materials.map(&:name).join(", ") : materials.name
+      LogManager.info "Matériau(x) configuré(s) : #{mat_names}"
+
+      # Wrap generation in an operation for single-click Undo
+      model.start_operation('Générer Torche v' + TorcheDyn::Config::VERSION, true)
+      
+      begin
+        # Instantiate Core and generate the volume
+        Core.new(model, params, materials).generate 
+      rescue StandardError => e
+        LogManager.error("Erreur fatale lors de la génération", e)
+        UI.messagebox("Une erreur est survenue :\n#{e.message}")
+      ensure
+        model.commit_operation
+        LogManager.info "Opération terminée."
+      end
     end
 
-    def self.setup_material(nb_materials)
+    private
+
+    def self.collect_inputs
+      prompts = [
+        "Rayon (cm)", "Nb Quartiers", "Décalage (cm)", "Épaisseur (cm)", 
+        "Hmax (cm)", "Facteur(coef)", "Mode (1:Corroyé 0:OCL)", 
+        "Normales (1:Oui 0:Non)", "Courbe (1:Parabole 0:Linéaire)", "Déroulé (1:Oui 0:Non)", 
+        "Position X (cm)", "Position Y (cm)",
+        "Nb Matériaux (1 ou 2)"
+      ]
+      
+      # Use @@last_params for session persistence
+      defaults = [
+        @@last_params[:rayon], 
+        @@last_params[:nb_quart], 
+        @@last_params[:decalage],
+        @@last_params[:epais], 
+        @@last_params[:hmax], 
+        @@last_params[:coef_factor],
+        @@last_params[:mode_corroye] ? 1 : 0, 
+        @@last_params[:show_normals] ? 1 : 0,
+        @@last_params[:parabole_lin] ? 1 : 0,
+        @@last_params[:mode_deroule] ? 1 : 0,
+        @@last_params[:pos_x],
+        @@last_params[:pos_y],
+        @@last_params[:nb_materials] || 1 
+      ]
+
+      input = UI.inputbox(prompts, defaults, "Paramètres Torche v#{VERSION}")
+      return nil unless input
+
+      { 
+        rayon: input[0].to_f, 
+        nb_quart: [input[1].to_i, 1].max, 
+        decalage: input[2].to_f, 
+        epais: input[3].to_f, 
+        hmax: input[4].to_f, 
+        coef_factor: input[5].to_f,
+        mode_corroye: input[6].to_i == 1, 
+        show_normals: input[7].to_i == 1, 
+        parabole_lin: input[8].to_i == 1,
+        mode_deroule: input[9].to_i == 1,
+        pos_x: input[10].to_f, 
+        pos_y: input[11].to_f, 
+        nb_materials: [input[12].to_i, 1].max
+      }
+    end
+
+    def self.setup_material
       model = Sketchup.active_model
-      materials = model.materials
+      mats = model.materials
 
-      # Création du matériau Bois Clair
-      mat_clair = materials.add("Bois Clair")
-      mat_clair.color = Sketchup::Color.new(222, 184, 135)
+      # On récupère les couleurs depuis le module Config
+      # On utilise l'astérisque (*) pour "splatter" le tableau [R,G,B] 
+      # comme arguments pour Sketchup::Color.new
+      color_clair = Sketchup::Color.new(*TorcheDyn::Config::COLOR_BOIS_CLAIR)
+      color_fonce = Sketchup::Color.new(*TorcheDyn::Config::COLOR_BOIS_FONCE)
 
-      if nb_materials >= 2
-        # Création du matériau Bois Foncé
-        mat_fonce = materials.add("Bois Foncé")
-        mat_fonce.color = Sketchup::Color.new(101, 67, 33)
-        
-        # Retourne un tableau pour permettre l'alternance dans Core
-        return [mat_clair, mat_fonce]
+      mat1 = mats["Bois Clair"] || mats.add("Bois Clair")
+      mat1.color = color_clair
+
+      mat2 = mats["Bois Foncé"] || mats.add("Bois Foncé")
+      mat2.color = color_fonce
+      
+      # On utilise les paramètres persistants pour savoir combien de matériaux retourner
+      if @@last_params[:nb_materials] == 2
+        return [mat1, mat2]
+      else
+        return mat1
       end
+    end
 
-      # Retourne un objet unique si nb_materials == 1
-      mat_clair
+
+    def self.setup_material
+      model = Sketchup.active_model
+      mats = model.materials
+
+      # RGB Colors
+      # Light Wood: Beige/Chamois (222, 184, 135)
+      # Dark Wood: Chocolate Brown (101, 67, 33)
+      color_clair = Sketchup::Color.new(222, 184, 135)
+      color_fonce = Sketchup::Color.new(101, 67, 33)
+
+      mat1 = mats["Bois Clair"] || mats.add("Bois Clair")
+      mat1.color = color_clair
+
+      mat2 = mats["Bois Foncé"] || mats.add("Bois Foncé")
+      mat2.color = color_fonce
+      
+      # Return array for the 2-light/1-dark cycle, otherwise just the primary material
+      if @@last_params[:nb_materials] == 2
+        return [mat1, mat2]
+      else
+        return mat1
+      end
     end
   end
 end

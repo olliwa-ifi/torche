@@ -1,57 +1,35 @@
-# ==============================================================================
-# Plugin : Torche_dyn - Générateur de Torche en bois
-# Version : 2.0.5.1 (Parabole ou Linéaire,  Déroulé ou final, Position) 
-# ==============================================================================
-require 'sketchup.rb'
+# torche_dyn/main.rb
+puts "🚀 Torche Generator: Main.rb has been loaded successfully!"
 
-# Chargement des modules du projet
+current_dir = File.expand_path(File.dirname(__FILE__))
+files_to_load = ['config.rb', 'logger.rb', 'core.rb', 'ui_handler.rb']
 
-module TorcheDyn
-  require_relative 'config'
-  require_relative 'logger'
-  require_relative 'ui_handler'
-  require_relative 'core'
+puts "--- 🛠️ TorcheGenerator Loading Start ---"
+puts "Looking in: #{current_dir}"
 
-  # Méthode principale lancée par le menu SketchUp
-  def self.run_generator
+files_to_load.each do |file|
+  full_path = File.join(current_dir, file)
+  if File.exist?(full_path)
     begin
-      # 1. Affichage de l'UI et récupération des paramètres
-      # UIHandler.show_dialog retourne un hash de params ou nil si annulé
-      params = UIHandler.show_dialog
-      
-      if params
-        # 2. Initialisation du moteur de génération avec les paramètres et matériaux
-        materials = UIHandler.setup_material(params[:nb_materials])
-        
-        generator = Core.new(params, materials)
-        
-        # 3. Exécution de la génération dans une opération pour permettre l'Undo
-        model = Sketchup.active_model
-        model.start_operation('Generate Torche Volume', true)
-        
-        generator.generate
-        
-        model.commit_operation
-        
-        Logger.info("Torche Volume generated successfully.")
-      else
-        Logger.info("Generation cancelled by user.")
-      end
-      
+      load full_path
+      puts "✅ Loaded: #{file}"
     rescue StandardError => e
-      Sketchup.active_model.abort_operation if Sketchup.active_model.active_operation
-      Logger.error("Failed to generate Torche Volume: #{e.message}")
-      puts e.backtrace # Sortie console détaillée pour le développeur
+      puts "❌ Error loading #{file}: #{e.message}"
+      puts e.backtrace.first(3).join("\n")
     end
+  else
+    puts "❓ File NOT FOUND: #{file} (Path: #{full_path})"
   end
+end
+puts "--- 🏁 TorcheGenerator Loading End ---"
 
- # -------------------------------------------------------------------------
-  # Enregistrement du menu
-  # -------------------------------------------------------------------------
-   # Installation du menu au chargement du plugin
-  if !defined?(@menu_loaded)
-    menu = UI.menu("Plugins")
-    menu.add_item("Générateur Torche Volume") { self.run_generator }
-    @menu_loaded = true
-  end
+# --- AJOUT : Création du menu SketchUp avec Version ---
+unless file_loaded?(__FILE__)
+  # On récupère la version depuis le module Config
+  version = (defined?(TorcheDyn::Config) && TorcheDyn::Config::VERSION) || "0.0.0"
+  
+  # On l'insère dynamiquement dans le nom de l'item du menu
+  UI.menu("Plugins").add_item("Générer Torche v#{version}") {
+    TorcheDyn::UIHandler.run
+  }
 end
