@@ -29,7 +29,7 @@ unless file_loaded?(__FILE__)
   version = (defined?(TorcheDyn::Config) && TorcheDyn::Config::VERSION) || "0.0.0"
   
   # On l'insère dynamiquement dans le nom de l'item du menu
-  UI.menu("Plugins").add_item("Générer Torche v#{version}") {
+  UI.menu("Plugins").add_item("Générer Torche v#{TorcheDyn::Config::VERSION}") {
     TorcheDyn::UIHandler.run
   }
 end

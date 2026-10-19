@@ -13,7 +13,7 @@ module TorcheDyn
       model = Sketchup.active_model
       
       # Version check
-      if Sketchup.version.to_f < Config::SKETCHUP_MIN_VERSION
+      if Sketchup.version.to_f < TorcheDyn::Config::SKETCHUP_MIN_VERSION
         LogManager.warn "Version incompatible : #{Sketchup.version}"
         UI.messagebox("Version incompatible : SketchUp #{Config::SKETCHUP_MIN_VERSION} minimum requis.")
         return
@@ -76,7 +76,7 @@ module TorcheDyn
         @@last_params[:nb_materials] || 1 
       ]
 
-      input = UI.inputbox(prompts, defaults, "Paramètres Torche v#{VERSION}")
+      input = UI.inputbox(prompts, defaults, "Paramètres Torche v#{TorcheDyn::Config::VERSION}")
       return nil unless input
 
       { 

@@ -5,7 +5,7 @@ module TorcheDyn
   module Config
     SKETCHUP_MIN_VERSION = 20.0
     # --- Version du Plugin ---
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
 
     DEFAULT_PARAMS = {
       rayon: 15.0, 

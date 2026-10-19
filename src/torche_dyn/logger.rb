@@ -7,7 +7,7 @@ module TorcheDyn
         base_dir = (model && model.path) ? File.dirname(model.path) : Dir.home
         # On utilise la constante VERSION définie dans Config
         version = (defined?(TorcheDyn::Config) && TorcheDyn::Config::VERSION) || "0.0.0"
-        File.expand_path(File.join(base_dir, "torche_dyn_v#{version}.log"))
+        File.expand_path(File.join(base_dir, "torche_dyn_v#{TorcheDyn::Config::VERSION}.log"))
       end
 
       # Crée l'en-tête de session détaillé
@@ -18,7 +18,7 @@ module TorcheDyn
         header = <<~HEADER
           ======================================================================
           SESSION START  : #{Time.now.strftime("%Y-%m-%d %H:%M:%S")}
-          Plugin Version : #{version} | SketchUp: #{Sketchup.version}
+          Plugin Version : #{TorcheDyn::Config::VERSION} | SketchUp: #{Sketchup.version}
           LOG PATH (ABS) : #{absolute_path}
           ======================================================================
         HEADER
