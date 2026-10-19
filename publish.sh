@@ -1,40 +1,71 @@
 #!/bin/bash
+set -e               # arrêter dès la première erreur
+IFS=$'\n\t'          # éviter les problèmes avec les espaces
 
-# 1. Extraction de la version depuis config.rb
-# Correction : suppression du guillemet erroné après config.rb
+# -------------------------------------------------
+# 1️⃣  Version depuis config.rb
+# -------------------------------------------------
 VERSION=$(grep 'VERSION\s*=\s*"' src/torche_dyn/config.rb | cut -d'"' -f2)
 
 if [ -z "$VERSION" ]; then
-    echo "❌ Erreur : Impossible de trouver la version dans torche_dyn/config.rb"
-    exit 1
+  echo "❌ Impossible de lire VERSION dans torche_dyn/config.rb"
+  exit 1
 fi
-echo "🔍 Version trouvée : $VERSION"
 
 TAG="v$VERSION"
-if [[ $VERSION == v* ]]; then
-    TAG=$VERSION
-fi
+[[ $VERSION == v* ]] && TAG=$VERSION
+echo "🔎 Version détectée : $TAG"
 
-# 2. Gestion du message de commit
+# -------------------------------------------------
+# 2️⃣  Message de commit (argument du script)
+# -------------------------------------------------
 USER_MSG=$1
 if [ -z "$USER_MSG" ]; then
-    COMMIT_MSG="Release $TAG"
+  COMMIT_MSG="Release $TAG"
 else
-    COMMIT_MSG="Release $TAG : $USER_MSG"
+  COMMIT_MSG="Release $TAG : $USER_MSG"
+fi
+echo "📝 Message de commit : $COMMIT_MSG"
+
+# -------------------------------------------------
+# 3️⃣  Build du .rbz (build_release.sh)
+# -------------------------------------------------
+echo "⚙️  Construction du paquet .rbz ..."
+chmod +x build_release.sh
+./build_release.sh
+
+# -------------------------------------------------
+# 4️⃣  Le .rbz se trouve dans le dossier “release”
+# -------------------------------------------------
+RELEASE_DIR="release"
+RBZ_FILE=$(find "$RELEASE_DIR" -maxdepth 1 -type f -name "*.rbz" -print -quit)
+
+if [ -z "$RBZ_FILE" ]; then
+  echo "❌ Aucun fichier .rbz trouvé dans le dossier $RELEASE_DIR"
+  exit 1
 fi
 
-echo "🚀 Préparation de la release $TAG"
-echo "📝 Message : $COMMIT_MSG"
+echo "✅ .rbz trouvé : $RBZ_FILE"
 
-# 3. Enregistrement des changements
+# -------------------------------------------------
+# 5️⃣  Copier le .rbz dans un répertoire d’archives local
+# -------------------------------------------------
+ARTIFACTS_DIR="artifacts"
+mkdir -p "$ARTIFACTS_DIR"
+cp "$RBZ_FILE" "$ARTIFACTS_DIR/"
+
+echo "📦 Copie du .rbz vers $ARTIFACTS_DIR/$(basename "$RBZ_FILE")"
+
+# -------------------------------------------------
+# 6️⃣  Commit / Tag / Push
+# -------------------------------------------------
 git add .
 git commit -m "$COMMIT_MSG"
+git tag "$TAG"
 
-# 4. Création du tag
-git tag $TAG
-
-# 5. Envoi vers GitHub
+echo "🚀 Poussée du code et du tag vers GitHub ..."
 git push origin main
-git push origin $TAG
+git push origin "$TAG"
 
-echo "✅ Version $TAG poussée avec succès !"
+echo "🎉 Publication terminée – version $TAG disponible sur GitHub."
+echo "    Le .rbz local est conservé dans le dossier ./$ARTIFACTS_DIR"
