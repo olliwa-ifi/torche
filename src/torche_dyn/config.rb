@@ -5,7 +5,7 @@ module TorcheDyn
   module Config
     SKETCHUP_MIN_VERSION = 20.0
     # --- Version du Plugin ---
-    VERSION = "1.0.2"
+    VERSION = "1.0.3"
 
     DEFAULT_PARAMS = {
       rayon: 15.0, 
@@ -29,7 +29,7 @@ module TorcheDyn
     
     # --- Couleurs des matériaux (RGB) ---
     # Bois Clair : Beige/Chamois
-    COLOR_BOIS_CLAIR = [222, 184, 135]
+    COLOR_BOIS_CLAIR = [222, 185, 135]
     # Bois Foncé : Marron Chocolat
     COLOR_BOIS_FONCE = [101, 67, 33]
   end
