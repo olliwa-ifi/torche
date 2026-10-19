@@ -1,4 +1,14 @@
+## Aperçu du résultat
+Voici un exemple de volume généré en mode "Dressed" avec une courbe parabolique (parametre par défaut):
 
+<p align="center">
+  <img src="assets/images/image0.png" alt="Rendu SketchUp TorcheDyn" width="500">
+</p>
+
+
+<p align="center">
+  <img src="assets/images/image1.png" alt="Rendu SketchUp TorcheDyn" width="500">
+</p>
 
 # 🪵 Générateur de Torche en bois pour SketchUp 2020+
 

@@ -22,7 +22,7 @@ module TorcheDyn
     
       # 2. Build the main component name
       main_suffix = @params[:mode_corroye] ? "Dressed" : "OpenCutList"
-      comp_name = "Torche_#{main_suffix}_v#{VERSION}_#{courbe_label}_#{coef_label}"
+      comp_name = "Torche_#{main_suffix}_v#{TorcheDyn::Config::VERSION}_#{courbe_label}_#{coef_label}"
     
       tor_def = @definitions.add(comp_name)
       LogManager.info "Composant principal créé : #{tor_def.name}"
@@ -135,7 +135,7 @@ module TorcheDyn
       end
       
       suffix = @params[:mode_corroye] ? "Dressed" : "ForCutList"
-      slat_def = @definitions.add("Slat_#{index}_#{suffix}_v#{VERSION}")
+      slat_def = @definitions.add("Slat_#{index}_#{suffix}_v#{TorcheDyn::Config::VERSION}")
       
       if @params[:mode_corroye]
         build_dressed_slat(slat_def, y_curr_coef1, y_next_coef1, y_curr_coef2, y_next_coef2, current_mat)
