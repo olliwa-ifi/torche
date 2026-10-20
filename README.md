@@ -69,10 +69,10 @@ Le code est modularisé pour garantir la stabilité et faciliter la maintenance 
 - **`logger.rb`** : Système de logs robuste avec fichiers de session datés.
 
 ## 📝 Informations techniques
-- **Version** : 1.0.0
+- **Version** : 1.0.x
 - **Compatibilité** : SketchUp 2020+
 - **Langage** : Ruby
-- **Licence** : [Indiquez votre licence, ex: MIT]
+- **Licence** : MIT
 
 ## 🛠 Développement & Build
 
