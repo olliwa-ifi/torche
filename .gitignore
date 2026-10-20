@@ -32,5 +32,4 @@ Gemfile.lock
 test_results/*.log
 .nextest/
 
-# script
-*.sh
+
