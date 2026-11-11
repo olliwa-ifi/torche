@@ -4,7 +4,7 @@
 module TorcheDyn
   module Config
     # --- Version du Plugin ---
-    VERSION = "1.0.5"
+    VERSION = "1.0.6"
 
     STYLE = {
       normal_line_length: 10.cm

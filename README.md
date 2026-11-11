@@ -1,22 +1,25 @@
+![Version](https://img.shields.io/badge/version-1.0.6-blue)
+![Platform](https://img.shields.io/badge/platform-SketchUp-orange)
+![Language](https://img.shields.io/badge/language-Ruby-red)
+
 ## Aperçu du résultat
 Voici un exemple de volume généré en mode "corroyé" avec une courbe parabolique (paramètre par défaut):
 
 <p align="center">
-  <img src="assets/images/image0.png" alt="Rendu SketchUp TorcheDyn" width="500">
-</p>
-
-
-<p align="center">
-  <img src="assets/images/image1.png" alt="Rendu SketchUp TorcheDyn" width="500">
+  <img src="assets/images/image0.png" alt="Rendu Torche" width="500">
 </p>
 
 # 🪵 Générateur de Torche en bois pour SketchUp 
 
 Plugin Ruby pour SketchUp permettant de générer des modèles de "Torche en bois" avec une gestion avancée des courbes, du placement et des matériaux.
 
+<p align="center">
+  <img src="assets/images/image1.png" alt="Rendu SketchUp TorcheDyn" width="500">
+</p>
+
 ## 🛠 Installation
 
-### Méthode Automatique 
+### Méthode Automatique (Fichier .rbz)
 1. Aller dans la section **Releases** de ce dépôt.
 2. Télécharger le fichier `.rbz` le plus récent.
 3. Dans SketchUp : `Fenêtre` $\rightarrow$ `Gestionnaire d'extensions` $\rightarrow$ `Installer l'extension`.
