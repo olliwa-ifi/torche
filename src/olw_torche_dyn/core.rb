@@ -13,7 +13,7 @@ module TorcheDyn
     end
 
     def generate
-      LogManager.info "Initialisation de la génération Torche..."
+      TorcheDyn::TorcheLogger.info "Initialisation de la génération Torche..."
       
       # 1. Determine curve label for naming
       courbe_label = @params[:parabole_lin] ? "Para" : "Lin"
@@ -25,20 +25,20 @@ module TorcheDyn
       comp_name = "Torche_#{main_suffix}_v#{TorcheDyn::Config::VERSION}_#{courbe_label}_#{coef_label}"
     
       tor_def = @definitions.add(comp_name)
-      LogManager.info "Composant principal créé : #{tor_def.name}"
+      TorcheDyn::TorcheLogger.info "Composant principal créé : #{tor_def.name}"
       
       setup_math_constants
       
-      LogManager.info "Création des #{ @params[:nb_quart] } douelles en cours..."
+      TorcheDyn::TorcheLogger.info "Création des #{ @params[:nb_quart] } douelles en cours..."
  
       (0...@params[:nb_quart]).each do |i|
         begin
           slat_def = create_slat_definition(i)
           place_slat(tor_def, slat_def, i)
           # Progress log every 5 slats
-          LogManager.info "Progression : Douelle #{i+1}/#{@params[:nb_quart]} placée." if (i + 1) % 5 == 0
+          TorcheDyn::TorcheLogger.info "Progression : Douelle #{i+1}/#{@params[:nb_quart]} placée." if (i + 1) % 5 == 0
         rescue => e
-          LogManager.error("Échec de la douelle index #{i}", e)
+          TorcheDyn::TorcheLogger.error("Échec de la douelle index #{i}", e)
         end
       end
       
@@ -48,8 +48,8 @@ module TorcheDyn
     
       @model.active_entities.add_instance(tor_def, final_trans)
       
-      LogManager.info "Instance finale ajoutée au modèle."
-      LogManager.info "Génération terminée avec succès."
+      TorcheDyn::TorcheLogger.info "Instance finale ajoutée au modèle."
+      TorcheDyn::TorcheLogger.info "Génération terminée avec succès."
     end
 
     private
@@ -78,7 +78,7 @@ module TorcheDyn
       end
 
       mode_label = @params[:parabole_lin] ? "parabolique" : "linéaire"
-      LogManager.debug "Mode : #{mode_label} | MidThreshold = #{@mid_threshold}, Coef1 = #{@coef1.round(3)}, Coef2 = #{@coef2.round(3)}"
+      TorcheDyn::TorcheLogger.debug "Mode : #{mode_label} | MidThreshold = #{@mid_threshold}, Coef1 = #{@coef1.round(3)}, Coef2 = #{@coef2.round(3)}"
       
       @profile_pts = {
         ptA: Geom::Point3d.new((-@interieur / 2).cm, 0, 0),
@@ -92,7 +92,6 @@ module TorcheDyn
     # Slat Creation
     # -----------------------------------------------------------------
     def create_slat_definition(index)
-      # 1. Calculate local heights
       x_curr = index * @exterieur
       x_next = (index + 1) * @exterieur
       
@@ -119,9 +118,8 @@ module TorcheDyn
         end
       end
 
-      LogManager.debug "Douelle #{index}: y_curr_1= #{y_curr_coef1.round(3)}, y_next_1=#{y_next_coef1.round(3)}, y_curr_2=#{y_curr_coef2.round(3)}, y_next_2=#{y_next_coef2.round(3)}"
+      TorcheDyn::TorcheLogger.debug "Douelle #{index}: y_curr_1= #{y_curr_coef1.round(3)}, y_next_1=#{y_next_coef1.round(3)}, y_curr_2=#{y_curr_coef2.round(3)}, y_next_2=#{y_next_coef2.round(3)}"
       
-      # 2. Material selection: 2 Light, 1 Dark cycle
       if @materials.is_a?(Array)
         if @params[:nb_materials] == 2
           cycle_index = index % 3
@@ -146,9 +144,6 @@ module TorcheDyn
       slat_def
     end
 
-    # -----------------------------------------------------------------
-    # OpenCutList Mode
-    # -----------------------------------------------------------------
     def build_simple_slat(slat_def, y_curr_coef1, y_next_coef1, y_curr_coef2, y_next_coef2, material)
       ztop      = (y_curr_coef1 - y_next_coef1).cm
       push_dist = (y_curr_coef1 - y_next_coef2).cm
@@ -159,7 +154,6 @@ module TorcheDyn
       face.pushpull(-push_dist) if push_dist > 0.001
       slat_def.entities.grep(Sketchup::Face).each { |f| f.material = material if material}
     end
-
     # -----------------------------------------------------------------
     # Dressed Mode – 8 points / 12 faces
     # -----------------------------------------------------------------
@@ -184,26 +178,26 @@ module TorcheDyn
       ents = slat_def.entities
 
       if (y_curr_coef2 - y_next_coef2).abs < 0.001 and (y_curr_coef2 - y_next_coef1).abs < 0.001
-        LogManager.debug "Points de base confondus ou alignés (zmid=zbot), passage en mode triangulation."
-        begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:B_b]); rescue => e; LogManager.debug "Err Triangle AtBtBb: #{e.message}"; end
-        begin; ents.add_face(pts[:A_t], pts[:B_b], pts[:A_b]); rescue => e; LogManager.debug "Err Triangle AtBbAb: #{e.message}"; end
-        begin; ents.add_face(pts[:D_t], pts[:C_t], pts[:C_b]); rescue => e; LogManager.debug "Err Triangle DtCtCb: #{e.message}"; end
-        begin; ents.add_face(pts[:D_t], pts[:C_b], pts[:D_b]); rescue => e; LogManager.debug "Err Triangle DtCbDb: #{e.message}"; end
-        begin; ents.add_face(pts[:A_t], pts[:D_t], pts[:D_b]); rescue => e; LogManager.debug "Err Triangle AtDtDb: #{e.message}"; end
-        begin; ents.add_face(pts[:A_t], pts[:D_b], pts[:A_b]); rescue => e; LogManager.debug "Err Triangle AtDbAb: #{e.message}"; end
-        begin; ents.add_face(pts[:B_t], pts[:C_t], pts[:C_b]); rescue => e; LogManager.debug "Err Triangle BtCtCb: #{e.message}"; end
-        begin; ents.add_face(pts[:B_t], pts[:C_b], pts[:B_b]); rescue => e; LogManager.debug "Err Triangle BtCbBb: #{e.message}"; end
+        TorcheDyn::TorcheLogger.debug "Points de base confondus ou alignés (zmid=zbot), passage en mode triangulation."
+        begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:B_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle AtBtBb: #{e.message}"; end
+        begin; ents.add_face(pts[:A_t], pts[:B_b], pts[:A_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle AtBbAb: #{e.message}"; end
+        begin; ents.add_face(pts[:D_t], pts[:C_t], pts[:C_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle DtCtCb: #{e.message}"; end
+        begin; ents.add_face(pts[:D_t], pts[:C_b], pts[:D_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle DtCbDb: #{e.message}"; end
+        begin; ents.add_face(pts[:A_t], pts[:D_t], pts[:D_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle AtDtDb: #{e.message}"; end
+        begin; ents.add_face(pts[:A_t], pts[:D_b], pts[:A_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle AtDbAb: #{e.message}"; end
+        begin; ents.add_face(pts[:B_t], pts[:C_t], pts[:C_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle BtCtCb: #{e.message}"; end
+        begin; ents.add_face(pts[:B_t], pts[:C_b], pts[:B_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Triangle BtCbBb: #{e.message}"; end
       else
-        begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:B_b], pts[:A_b]); rescue => e; LogManager.debug "Err Quadri ABtb: #{e.message}"; end
-        begin; ents.add_face(pts[:D_t], pts[:C_t], pts[:C_b], pts[:D_b]); rescue => e; LogManager.debug "Err Quadri DCtb: #{e.message}"; end
-        begin; ents.add_face(pts[:A_t], pts[:D_t], pts[:D_b], pts[:A_b]); rescue => e; LogManager.debug "Err Quadri ADtb: #{e.message}"; end
-        begin; ents.add_face(pts[:B_t], pts[:C_t], pts[:C_b], pts[:B_b]); rescue => e; LogManager.debug "Err Quadri BCtb: #{e.message}"; end
+        begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:B_b], pts[:A_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Quadri ABtb: #{e.message}"; end
+        begin; ents.add_face(pts[:D_t], pts[:C_t], pts[:C_b], pts[:D_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Quadri DCtb: #{e.message}"; end
+        begin; ents.add_face(pts[:A_t], pts[:D_t], pts[:D_b], pts[:A_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Quadri ADtb: #{e.message}"; end
+        begin; ents.add_face(pts[:B_t], pts[:C_t], pts[:C_b], pts[:B_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Err Quadri BCtb: #{e.message}"; end
       end
 
-      begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:C_t]); rescue => e; LogManager.debug "Erreur face At Bt Ct: #{e.message}"; end 
-      begin; ents.add_face(pts[:A_t], pts[:C_t], pts[:D_t]); rescue => e; LogManager.debug "Erreur face At Ct Dt: #{e.message}"; end 
-      begin; ents.add_face(pts[:C_b], pts[:D_b], pts[:B_b]); rescue => e; LogManager.debug "Erreur face Cb Db Bb: #{e.message}"; end
-      begin; ents.add_face(pts[:A_b], pts[:D_b], pts[:B_b]); rescue => e; LogManager.debug "Erreur face Ab Db Bb: #{e.message}"; end
+      begin; ents.add_face(pts[:A_t], pts[:B_t], pts[:C_t]); rescue => e; TorcheDyn::TorcheLogger.debug "Erreur face At Bt Ct: #{e.message}"; end 
+      begin; ents.add_face(pts[:A_t], pts[:C_t], pts[:D_t]); rescue => e; TorcheDyn::TorcheLogger.debug "Erreur face At Ct Dt: #{e.message}"; end 
+      begin; ents.add_face(pts[:C_b], pts[:D_b], pts[:B_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Erreur face Cb Db Bb: #{e.message}"; end
+      begin; ents.add_face(pts[:A_b], pts[:D_b], pts[:B_b]); rescue => e; TorcheDyn::TorcheLogger.debug "Erreur face Ab Db Bb: #{e.message}"; end
       
       finalize_segment(slat_def, material)
     end
@@ -245,7 +239,9 @@ module TorcheDyn
     def visualize_normals(entities)
       entities.grep(Sketchup::Face).each do |face|
         center = calculate_face_centroid(face)
-        line = entities.add_line(center, center.offset(face.normal, Config::STYLE[:normal_line_length]))
+        # Correction : Utilisation sécurisée de TorcheDyn::Config
+        length = (defined?(TorcheDyn::Config) && TorcheDyn::Config::STYLE && TorcheDyn::Config::STYLE[:normal_line_length]) rescue 10.cm
+        line = entities.add_line(center, center.offset(face.normal, length))
         line.material = "Red"
       end
     end
