@@ -1,4 +1,4 @@
-![Version](https://img.shields.io/badge/version-1.0.6-blue)
+![Version](https://img.shields.io/badge/version-1.0.7-blue)
 ![Platform](https://img.shields.io/badge/platform-SketchUp-orange)
 ![Language](https://img.shields.io/badge/language-Ruby-red)
 

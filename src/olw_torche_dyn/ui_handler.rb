@@ -1,12 +1,10 @@
+
 # -------------------------------------------------------------------------
 # UIHandler – handles user input, persistence, and material setup
 # -------------------------------------------------------------------------
 
-
 module TorcheDyn
   module UIHandler
-    # 1. LE SCHEMA : Source unique de vérité
-    # On définit ici chaque champ, son label, sa valeur par défaut et son type
     SCHEMA = {
       pos_x:           { prompt: "[ORIGINE] X (cm):",         default: "0.0",   list: nil, type: :float },
       pos_y:           { prompt: "          Y (cm):",         default: "0.0",   list: nil, type: :float },
@@ -23,7 +21,6 @@ module TorcheDyn
       nb_materials:    { prompt: "          Nb Matériaux:",   default: "1",     list: "1|2", type: :integer }
     }.freeze
 
-    # 2. RÈGLES DE VALIDATION
     VALIDATION_RULES = {
       pos_x:           { min: -10000, max: 10000 },
       pos_y:           { min: -10000, max: 10000 },
@@ -35,36 +32,41 @@ module TorcheDyn
       coef_factor:     { min: 0.01, max: 10 },
     }.freeze
 
+    @@session_params = {}
+
     def self.run
       begin
         TorcheLogger.debug("Ouverture de la boîte de dialogue de saisie")
-        
-        # Préparation des données pour UI.inputbox basée sur le SCHEMA
-        prompts = SCHEMA.values.map { |v| v[:prompt] }
-        lists    = SCHEMA.values.map { |v| v[:list] }
-        defaults = SCHEMA.values.map { |v| v[:default] }
-        
-        # Affichage de la boîte de dialogue
+
+        prompts  = []
+        defaults = []
+        lists    = []
+
+        SCHEMA.each do |key, config|
+          prompts  << config[:prompt]
+          lists    << config[:list]
+          defaults << (@@session_params[key] || config[:default]).to_s
+        end
+
         input = UI.inputbox(prompts, defaults, lists, "Paramètres Torche v#{TorcheDyn::Config::VERSION rescue '1.0.4'}")
         return unless input
 
-        # Création d'un hash { :rayon => "10.0", ... }
-        user_data = SCHEMA.keys.zip(input).to_h
-        
-        # VALIDATION et NETTOYAGE des données
+        user_data        = SCHEMA.keys.zip(input).to_h
         validated_params = validate_and_sanitize(user_data)
-        
-        # EXECUTION
+
+        # On mémorise les chaînes brutes seulement si la validation a réussi
+        @@session_params = user_data
+
         model = Sketchup.active_model
         materials = setup_materials(validated_params[:nb_materials])
-        
+
         model.start_operation('Générer Torche', true)
         begin
           TorcheDyn::Core.new(model, validated_params, materials).generate
         ensure
           model.commit_operation
         end
-        
+
         TorcheLogger.info("Génération terminée avec succès.")
 
       rescue ArgumentError => e
@@ -80,11 +82,9 @@ module TorcheDyn
 
     def self.validate_and_sanitize(user_data)
       validated = {}
-
       user_data.each do |key, value|
         config = SCHEMA[key]
         label = config[:prompt].split(':').first
-
         case config[:type]
         when :float
           num = value.to_f
@@ -114,18 +114,15 @@ module TorcheDyn
     def self.setup_materials(count)
       model = Sketchup.active_model
       mats = model.materials
-
-      # Couleurs récupérées depuis Config
       c_clair = Sketchup::Color.new(*(TorcheDyn::Config::COLOR_BOIS_CLAIR rescue [222, 184, 135]))
       c_fonce = Sketchup::Color.new(*(TorcheDyn::Config::COLOR_BOIS_FONCE rescue [101, 67, 33]))
-
       mat1 = mats["Bois Clair"] || mats.add("Bois Clair")
       mat1.color = c_clair
-
       mat2 = mats["Bois Foncé"] || mats.add("Bois Foncé")
       mat2.color = c_fonce
-
       count == 2 ? [mat1, mat2] : mat1
     end
   end
 end
+
+
